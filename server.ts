@@ -88,18 +88,17 @@ app.post("/api/study", async (req, res) => {
     Provide a graph structure (nodes and edges) representing the logical breakdown of the concept.
     Also provide a summary, detailed markdown explanation, and a 3-question quiz.`;
 
-    const result = await ai.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction,
-    }).generateContent({
+    const result = await ai.models.generateContent({
+      model: "gemini-3.6-flash",
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
+      config: {
+        systemInstruction,
         responseMimeType: "application/json",
         responseSchema: studySchema,
       },
     });
 
-    const response = JSON.parse(result.response.text() || "{}");
+    const response = JSON.parse(result.text || "{}");
     
     res.json(response);
   } catch (error: any) {
