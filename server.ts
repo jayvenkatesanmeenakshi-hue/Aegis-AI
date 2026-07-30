@@ -1,6 +1,6 @@
 import express from "express";
 import path from "path";
-import { GoogleGenAI, Type } from "@google/genai";
+import { generateStudyData } from "./src/lib/gemini.ts";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -25,100 +25,11 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-const studySchema = {
-  type: Type.OBJECT,
-  properties: {
-    summary: { type: Type.STRING },
-    explanation: { type: Type.STRING },
-    nodes: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          id: { type: Type.STRING },
-          title: { type: Type.STRING },
-          description: { type: Type.STRING },
-        },
-        required: ["id", "title", "description"],
-      },
-    },
-    edges: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          source: { type: Type.STRING },
-          target: { type: Type.STRING },
-          label: { type: Type.STRING },
-        },
-        required: ["source", "target", "label"],
-      },
-    },
-    quiz: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          question: { type: Type.STRING },
-          options: { type: Type.ARRAY, items: { type: Type.STRING } },
-          correctAnswer: { type: Type.NUMBER },
-          feedback: { type: Type.STRING },
-        },
-        required: ["question", "options", "correctAnswer", "feedback"],
-      },
-    },
-  },
-  required: ["summary", "explanation", "nodes", "edges", "quiz"],
-};
-
 app.post("/api/study", async (req, res) => {
   try {
     const { prompt, depth, subject } = req.body;
-    
-    if (!process.env.GEMINI_API_KEY) {
-      console.error("Missing GEMINI_API_KEY");
-      return res.status(500).json({ error: "Gemini API key not configured" });
-    }
-
-    const ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-    });
-
-    const systemInstruction = `You are Aegis AI, a STEM and Literature study co-pilot. 
-    Explain the concept: "${prompt}" for a ${subject} student at a "${depth}" depth level.
-    Provide a graph structure (nodes and edges) representing the logical breakdown of the concept.
-    Also provide a summary, detailed markdown explanation, and a 3-question quiz.`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: studySchema as any,
-      },
-    });
-
-    if (!response.text) {
-      throw new Error("Empty response from Gemini API");
-    }
-
-    let text = response.text.trim();
-    // Sometimes the model still wraps in markdown blocks even with responseMimeType
-    if (text.startsWith("```")) {
-      text = text.replace(/^```json\s*|```\s*$/g, "");
-    }
-
-    try {
-      const responseData = JSON.parse(text);
-      res.json(responseData);
-    } catch (parseError) {
-      console.error("Failed to parse Gemini response:", text);
-      res.status(500).json({ 
-        error: "Failed to parse study data",
-        details: text.substring(0, 200)
-      });
-    }
+    const responseData = await generateStudyData(prompt, subject, depth);
+    res.json(responseData);
   } catch (error: any) {
     console.error("Gemini API error:", error);
     let message = error.message || "An error occurred during generation";
@@ -151,7 +62,8 @@ async function setupFrontend() {
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (!process.env.VERCEL) {
+    // In standard production (non-Vercel), serve static files from dist
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
