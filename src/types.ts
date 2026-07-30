@@ -1,5 +1,3 @@
-import { Timestamp } from 'firebase/firestore';
-
 export interface QuizQuestion {
   question: string;
   options: string[];
@@ -24,7 +22,7 @@ export interface StudySession {
   userId: string;
   title: string;
   subject: string;
-  createdAt: Timestamp;
+  createdAt: string;
   lastPrompt: string;
   nodes: NodeData[];
   edges: EdgeData[];

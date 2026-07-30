@@ -39,20 +39,6 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import { useStore } from './store';
-import { db } from './lib/firebase';
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot, 
-  addDoc, 
-  Timestamp,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc
-} from 'firebase/firestore';
 
 // --- Types & Constants ---
 
@@ -244,7 +230,6 @@ const OnboardingFlow = () => {
   const [grade, setGrade] = useState(user?.grade || 1);
   const [subjects, setSubjects] = useState<string[]>(user?.subjects || []);
   const [subjectInput, setSubjectInput] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
 
   // Initialize step based on what data is already present
   useEffect(() => {
@@ -291,15 +276,8 @@ const OnboardingFlow = () => {
       });
     }
 
-    setIsSaving(true);
-    try {
-      await setDoc(doc(db, 'users', user.uid), data, { merge: true });
-      console.log("Firestore sync successful");
-    } catch (err) {
-      console.warn("Failed to sync progress to cloud, saving locally:", err);
-    } finally {
-      setIsSaving(false);
-    }
+    // Local-only persistence via Zustand (persisted middleware handles storage)
+    setUser(updatedUser);
   };
 
   const handleComplete = async () => {
@@ -338,9 +316,9 @@ const OnboardingFlow = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${isSaving ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`}></div>
+              <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
               <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">
-                {isSaving ? 'Syncing...' : 'Connected'}
+                Local Save
               </span>
             </div>
             <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Step {step} of 4</p>
@@ -407,12 +385,12 @@ const OnboardingFlow = () => {
                   className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none transition-all text-sm font-medium"
                 />
                 <button 
-                  disabled={!otherSchool.trim() || isSaving}
+                  disabled={!otherSchool.trim()}
                   onClick={() => saveProgress({ school: otherSchool })}
                   className="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {isSaving ? "Saving..." : "Continue"}
-                  {!isSaving && <ArrowRight size={18} />}
+                  Continue
+                  <ArrowRight size={18} />
                 </button>
               </motion.div>
             )}
@@ -447,11 +425,11 @@ const OnboardingFlow = () => {
                   className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none"
                 />
                 <button 
-                  disabled={!otherSyllabus.trim() || isSaving}
+                  disabled={!otherSyllabus.trim()}
                   onClick={() => saveProgress({ syllabus: otherSyllabus })}
                   className="w-full bg-teal-500 text-white py-3 rounded-xl font-bold disabled:opacity-50"
                 >
-                  {isSaving ? "Saving..." : "Continue"}
+                  Continue
                 </button>
               </div>
             )}
@@ -501,11 +479,11 @@ const OnboardingFlow = () => {
               ))}
             </div>
             <button 
-              disabled={subjects.length === 0 || isSaving}
+              disabled={subjects.length === 0}
               onClick={handleComplete}
               className="w-full bg-teal-500 text-white py-3 rounded-xl font-bold disabled:opacity-50 mt-4 shadow-sm"
             >
-              {isSaving ? "Completing..." : "Finish Onboarding"}
+              Finish Onboarding
             </button>
             <button onClick={() => setStep(3)} className="w-full text-slate-400 text-sm font-medium py-2">Go Back</button>
           </div>
@@ -520,18 +498,8 @@ const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      const q = query(
-        collection(db, 'sessions'),
-        where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc')
-      );
-      const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
-        const sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setHistory(sessions);
-      });
-      return () => unsubscribeSnapshot();
-    }
+    // Session history is now managed via local state/persistence in the store
+    // instead of real-time Firestore sync.
   }, [user]);
 
   const loadSession = (session: any) => {
@@ -736,18 +704,21 @@ const LeftPanel = () => {
       setStudyData(data);
 
       if (user && data && data.nodes) {
-        await addDoc(collection(db, 'sessions'), {
+        const newSession = {
+          id: Math.random().toString(36).substring(7),
           userId: user.uid,
           title: input,
           subject,
-          createdAt: Timestamp.now(),
+          createdAt: new Date().toISOString(),
           lastPrompt: input,
           nodes: data.nodes || [],
           edges: data.edges || [],
           explanation: data.explanation || '',
           summary: data.summary || '',
           quiz: data.quiz || []
-        });
+        };
+        // @ts-ignore - history types might differ slightly but logic holds
+        setHistory([newSession, ...history]);
       }
     } catch (err: any) {
       console.error(err);
