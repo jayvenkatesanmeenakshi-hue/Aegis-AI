@@ -20,6 +20,7 @@ app.use((req, res, next) => {
   next();
 });
 
+// Explicit API routes FIRST
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
@@ -141,20 +142,15 @@ app.all("/api/*", (req, res) => {
   res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
 });
 
-async function startServer() {
-  // Vite middleware for development
+// Vite / Static setup
+async function setupFrontend() {
   if (process.env.NODE_ENV !== "production") {
-    try {
-      const { createServer: createViteServer } = await import("vite");
-      const vite = await createViteServer({
-        server: { middlewareMode: true },
-        appType: "spa",
-      });
-      app.use(vite.middlewares);
-      console.log("Vite middleware loaded");
-    } catch (e) {
-      console.error("Failed to load Vite middleware:", e);
-    }
+    const { createServer: createViteServer } = await import("vite");
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
@@ -163,9 +159,14 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
-  });
+  // Only listen if not on Vercel (or similar serverless env)
+  if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  }
 }
 
-startServer();
+setupFrontend().catch(console.error);
+
+export default app;

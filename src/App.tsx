@@ -723,7 +723,7 @@ const LeftPanel = () => {
         const errorText = await res.text();
         console.error(`API Error (${res.status}):`, {
           status: res.status,
-          statusText: res.ok,
+          statusText: res.statusText,
           headers: Object.fromEntries(res.headers.entries()),
           body: errorText.substring(0, 500)
         });
