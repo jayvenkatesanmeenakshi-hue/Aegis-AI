@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 
@@ -19,15 +18,6 @@ app.use((req, res, next) => {
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
-});
-
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || "",
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    }
-  }
 });
 
 const studySchema = {
@@ -85,18 +75,22 @@ app.post("/api/study", async (req, res) => {
       return res.status(500).json({ error: "Gemini API key not configured" });
     }
 
+    const ai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+    });
+
     const systemInstruction = `You are Aegis AI, a STEM and Literature study co-pilot. 
     Explain the concept: "${prompt}" for a ${subject} student at a "${depth}" depth level.
     Provide a graph structure (nodes and edges) representing the logical breakdown of the concept.
     Also provide a summary, detailed markdown explanation, and a 3-question quiz.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: "gemini-2.0-flash",
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
         systemInstruction,
         responseMimeType: "application/json",
-        responseSchema: studySchema,
+        responseSchema: studySchema as any,
       },
     });
 
@@ -119,6 +113,7 @@ async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     try {
+      const { createServer: createViteServer } = await import("vite");
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: "spa",
