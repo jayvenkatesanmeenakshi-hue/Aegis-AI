@@ -249,26 +249,44 @@ const OnboardingFlow = () => {
   // Initialize step based on what data is already present
   useEffect(() => {
     if (user) {
-      if (user.subjects && user.subjects.length > 0) setStep(4);
-      else if (user.grade) setStep(3);
-      else if (user.syllabus) setStep(2);
-      else if (user.school) setStep(1);
+      if (user.onboarded) setView('app');
+      else if (user.subjects && user.subjects.length > 0) setStep(4);
+      else if (user.grade) setStep(4);
+      else if (user.syllabus) setStep(3);
+      else if (user.school) setStep(2);
     }
   }, []);
 
+  // Keep local states in sync with user profile
+  useEffect(() => {
+    if (user) {
+      if (user.school) setSchool(user.school);
+      if (user.syllabus) setSyllabus(user.syllabus);
+      if (user.grade) setGrade(user.grade);
+      if (user.subjects) setSubjects(user.subjects);
+    }
+  }, [user]);
+
   const saveProgress = async (data: any, next: boolean = true) => {
     if (!user) return;
+    
+    // Optimistic local update
+    const updatedUser = { ...user, ...data };
+    setUser(updatedUser);
+    
+    if (data.school) setSchool(data.school);
+    if (data.syllabus) setSyllabus(data.syllabus);
+    if (data.grade) setGrade(data.grade);
+    if (data.subjects) setSubjects(data.subjects);
+    
+    if (next) setStep((prev) => prev + 1);
+
     setIsSaving(true);
     try {
-      // Use setDoc with merge: true instead of updateDoc to handle non-existent docs
-      // Also, we wrap in a try-catch to allow local progress if Firestore is unconfigured or blocked
       await setDoc(doc(db, 'users', user.uid), data, { merge: true });
     } catch (err) {
       console.warn("Failed to sync progress to cloud, saving locally:", err);
-      // We still update local state below
     } finally {
-      setUser({ ...user, ...data });
-      if (next) setStep(step + 1);
       setIsSaving(false);
     }
   };
@@ -322,14 +340,14 @@ const OnboardingFlow = () => {
             <h2 className="text-2xl font-bold text-slate-900">Which school do you attend?</h2>
             <div className="grid grid-cols-1 gap-3">
               <button 
-                onClick={() => { setSchool('21kschool'); saveProgress({ school: '21kschool' }); }}
-                className="p-4 border border-teal-100 rounded-xl hover:bg-teal-50 text-left font-medium text-slate-700 transition-all"
+                onClick={() => saveProgress({ school: '21kschool' })}
+                className={`p-4 border rounded-xl text-left font-medium transition-all ${school === '21kschool' ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-teal-100 text-slate-700 hover:bg-teal-50'}`}
               >
                 21kschool
               </button>
               <button 
                 onClick={() => setSchool('Other')}
-                className={`p-4 border rounded-xl text-left font-medium transition-all ${school === 'Other' ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-teal-100 text-slate-700 hover:bg-teal-50'}`}
+                className={`p-4 border rounded-xl text-left font-medium transition-all ${school === 'Other' || (school && school !== '21kschool') ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-teal-100 text-slate-700 hover:bg-teal-50'}`}
               >
                 Other
               </button>
