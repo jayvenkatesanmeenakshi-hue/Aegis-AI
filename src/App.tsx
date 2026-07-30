@@ -39,14 +39,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import { useStore } from './store';
-import { db, auth } from './lib/firebase';
-import { 
-  onAuthStateChanged, 
-  signInWithPopup, 
-  GoogleAuthProvider,
-  signInAnonymously,
-  signOut
-} from 'firebase/auth';
+import { db } from './lib/firebase';
 import { 
   collection, 
   query, 
@@ -74,64 +67,12 @@ const SPECIAL_SUBJECTS: Record<string, any> = {
 
 const LandingPage = () => {
   const { user, setView } = useStore();
-  const [authErrorModal, setAuthErrorModal] = useState<string | null>(null);
-  const [isCopied, setIsCopied] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
   
-  const currentDomain = typeof window !== 'undefined' ? window.location.hostname : '';
-
-  const handleCopyDomain = () => {
-    if (currentDomain) {
-      navigator.clipboard.writeText(currentDomain);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    }
-  };
-
-  const handleGuestLogin = async () => {
-    setIsLoggingIn(true);
-    try {
-      const cred = await signInAnonymously(auth);
-      if (cred.user) {
-        setAuthErrorModal(null);
-      }
-    } catch (err) {
-      console.warn("Anonymous auth failed, using local guest fallback:", err);
-      const guestUser = {
-        uid: 'guest-' + Date.now(),
-        email: 'guest@aegis.ai',
-        displayName: 'Guest Student',
-        photoURL: null,
-        onboarded: false
-      };
-      useStore.getState().setUser(guestUser);
-      useStore.getState().setView('onboarding');
-      setAuthErrorModal(null);
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
-
-  const handleLogin = async () => {
-    if (user) {
-      setView(user.onboarded ? 'app' : 'onboarding');
-      return;
-    }
-    setIsLoggingIn(true);
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-      setAuthErrorModal(null);
-    } catch (error: any) {
-      console.error("Login failed:", error);
-      const code = error?.code || '';
-      if (code.includes('unauthorized-domain') || error?.message?.includes('unauthorized-domain')) {
-        setAuthErrorModal('unauthorized-domain');
-      } else {
-        setAuthErrorModal(error?.message || 'Login failed. Please try again.');
-      }
-    } finally {
-      setIsLoggingIn(false);
+  const handleStart = () => {
+    if (user?.onboarded) {
+      setView('app');
+    } else {
+      setView('onboarding');
     }
   };
 
@@ -163,100 +104,8 @@ const LandingPage = () => {
       {/* Background Mist Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-50 rounded-full blur-[120px] opacity-60"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-teal-50 rounded-full blur-[120px] opacity-60"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-50 rounded-full blur-[120px] opacity-60"></div>
       </div>
-
-      {/* Auth Error Modal */}
-      <AnimatePresence>
-        {authErrorModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-100 space-y-6 relative overflow-hidden"
-            >
-              <button 
-                onClick={() => setAuthErrorModal(null)}
-                className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
-              >
-                <X size={20} />
-              </button>
-
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl border border-amber-100">
-                  <ShieldAlert size={28} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">
-                    {authErrorModal === 'unauthorized-domain' ? 'Firebase Domain Not Authorized' : 'Sign In Notice'}
-                  </h2>
-                  <p className="text-xs text-slate-500">Domain configuration requirement detected</p>
-                </div>
-              </div>
-
-              {authErrorModal === 'unauthorized-domain' ? (
-                <div className="space-y-4 text-sm text-slate-600">
-                  <p className="leading-relaxed">
-                    Firebase Authentication requires domain allowlisting. Your current host domain is not yet added to your Firebase project settings:
-                  </p>
-
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs font-semibold text-teal-700 truncate select-all">{currentDomain}</span>
-                    <button
-                      onClick={handleCopyDomain}
-                      className="px-3 py-1.5 bg-white border border-slate-200 hover:border-teal-500 rounded-lg text-xs font-medium text-slate-700 flex items-center gap-1.5 transition-all shadow-sm shrink-0"
-                    >
-                      {isCopied ? <CheckCircle size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                      {isCopied ? 'Copied!' : 'Copy Domain'}
-                    </button>
-                  </div>
-
-                  <div className="bg-amber-50/60 border border-amber-100 rounded-2xl p-4 space-y-2 text-xs text-amber-900">
-                    <p className="font-bold flex items-center gap-1.5">
-                      <ExternalLink size={14} /> Quick Fix in Firebase Console:
-                    </p>
-                    <ol className="list-decimal list-inside space-y-1 text-amber-800 leading-relaxed">
-                      <li>Go to <strong>Firebase Console &rarr; Authentication &rarr; Settings</strong></li>
-                      <li>Click <strong>Authorized Domains</strong> tab &rarr; <strong>Add Domain</strong></li>
-                      <li>Paste <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-semibold">{currentDomain}</code> and save</li>
-                    </ol>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-slate-600 leading-relaxed">{authErrorModal}</p>
-              )}
-
-              <div className="pt-2 flex flex-col gap-2">
-                <button
-                  onClick={handleGuestLogin}
-                  disabled={isLoggingIn}
-                  className="w-full py-3.5 px-4 bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 text-sm"
-                >
-                  <UserCheck size={18} />
-                  Continue as Guest (Instant Access)
-                </button>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleLogin}
-                    disabled={isLoggingIn}
-                    className="flex-1 py-2.5 px-4 bg-white border border-slate-200 hover:border-teal-500 text-slate-700 font-semibold rounded-xl transition-all text-xs"
-                  >
-                    Try Google Sign In
-                  </button>
-                  <button
-                    onClick={() => setAuthErrorModal(null)}
-                    className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl transition-all text-xs"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       <nav className="relative z-10 flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
         <div className="flex items-center gap-2 font-bold text-xl text-teal-600 tracking-tight">
@@ -264,28 +113,11 @@ const LandingPage = () => {
           <span>Aegis AI</span>
         </div>
         <div className="flex items-center gap-3">
-          {user ? (
-            <button
-              onClick={() => setView(user.onboarded ? 'app' : 'onboarding')}
-              className="text-sm font-semibold text-teal-600 hover:text-teal-700 transition-colors"
-            >
-              Back to {user.onboarded ? 'Dashboard' : 'Onboarding'}
-            </button>
-          ) : (
-            <button
-              onClick={handleGuestLogin}
-              disabled={isLoggingIn}
-              className="text-xs font-semibold text-slate-500 hover:text-teal-600 px-3 py-2 transition-colors hidden sm:block"
-            >
-              Continue as Guest
-            </button>
-          )}
           <button
-            onClick={handleLogin}
-            disabled={isLoggingIn}
-            className="px-5 py-2.5 bg-white border border-teal-100 text-teal-700 font-semibold rounded-xl hover:bg-teal-50 transition-all shadow-sm hover:shadow-md flex items-center gap-2 disabled:opacity-50"
+            onClick={handleStart}
+            className="px-5 py-2.5 bg-white border border-teal-100 text-teal-700 font-semibold rounded-xl hover:bg-teal-50 transition-all shadow-sm hover:shadow-md flex items-center gap-2"
           >
-            {isLoggingIn ? 'Connecting...' : (user ? 'Signed In' : 'Sign In')}
+            {user?.onboarded ? 'Open App' : 'Get Started'}
           </button>
         </div>
       </nav>
@@ -329,27 +161,17 @@ const LandingPage = () => {
           >
             <div className="flex flex-col sm:flex-row gap-4">
               <button
-                onClick={handleLogin}
-                disabled={isLoggingIn}
-                className="px-8 py-4 bg-teal-500 text-white font-bold rounded-2xl hover:bg-teal-600 transition-all shadow-xl shadow-teal-500/20 flex items-center gap-2 group disabled:opacity-50"
+                onClick={handleStart}
+                className="px-8 py-4 bg-teal-500 text-white font-bold rounded-2xl hover:bg-teal-600 transition-all shadow-xl shadow-teal-500/20 flex items-center gap-2 group"
               >
-                {user ? (user.onboarded ? 'Go to Dashboard' : 'Continue Onboarding') : 'Start Studying Free'}
+                {user?.onboarded ? 'Go to Dashboard' : 'Start Studying Free'}
                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
               </button>
               <div className="flex items-center gap-2 px-6 py-4 text-slate-400 text-sm font-medium">
                 <ShieldCheck size={18} className="text-teal-400" />
-                {user ? 'Authenticated Account' : 'Secure Authentication'}
+                No Login Required
               </div>
             </div>
-
-            {!user && (
-              <button
-                onClick={handleGuestLogin}
-                className="text-xs text-slate-400 hover:text-teal-600 font-medium underline underline-offset-4 transition-colors pt-1"
-              >
-                Or Continue as Guest (Instant Access)
-              </button>
-            )}
           </motion.div>
         </div>
 
@@ -709,12 +531,9 @@ const Sidebar = () => {
 
       {isOpen && (
         <div className="p-4 border-t border-teal-100">
-          <button 
-            onClick={() => signOut(auth)}
-            className="w-full p-2 text-xs text-slate-400 hover:text-red-400 transition-colors flex items-center gap-2 justify-center"
-          >
-            Sign Out
-          </button>
+          <div className="text-center">
+            <p className="text-[10px] text-slate-400 font-medium tracking-tight">Aegis AI v1.0</p>
+          </div>
         </div>
       )}
     </motion.div>
@@ -1048,63 +867,12 @@ const RightPanel = () => {
 
 export default function App() {
   const { user, setUser, view, setView } = useStore();
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      try {
-        if (firebaseUser) {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (userDoc.exists()) {
-            const userData = userDoc.data() as any;
-            setUser({ uid: firebaseUser.uid, ...userData });
-            // If returning user who is onboarded, go to app
-            if (userData.onboarded) {
-              setView('app');
-            } else {
-              setView('onboarding');
-            }
-          } else {
-            const newUser = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
-              onboarded: false
-            };
-            await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
-            setUser(newUser);
-            setView('onboarding');
-          }
-        } else {
-          setUser(null);
-          setView('landing');
-        }
-      } catch (err) {
-        console.error("Auth state change error:", err);
-      } finally {
-        setLoading(false);
-      }
-    });
-    return () => unsubscribe();
+    // Initialization: Just move beyond loading immediately
+    // If the user has already onboarded, we can default to 'app' view
+    // but typically we start at landing as per store default.
   }, []);
-
-  if (loading) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#F8FAFC]">
-        <motion.div 
-          animate={{ 
-            rotate: 360,
-            scale: [1, 1.1, 1],
-            opacity: [0.5, 1, 0.5]
-          }} 
-          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-        >
-          <Zap size={32} className="text-teal-500" />
-        </motion.div>
-      </div>
-    );
-  }
 
   if (view === 'landing') {
     return <LandingPage />;

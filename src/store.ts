@@ -53,7 +53,17 @@ interface AppState {
 }
 
 export const useStore = create<AppState>((set) => ({
-  user: null,
+  user: {
+    uid: 'guest-' + (typeof window !== 'undefined' ? (localStorage.getItem('guest_id') || (() => {
+      const id = Math.random().toString(36).substring(7);
+      localStorage.setItem('guest_id', id);
+      return id;
+    })()) : 'server'),
+    email: 'guest@aegis.ai',
+    displayName: 'Guest Student',
+    photoURL: null,
+    onboarded: false
+  },
   view: 'landing',
   currentPrompt: '',
   subject: 'Physics',
