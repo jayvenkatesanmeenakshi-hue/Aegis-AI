@@ -99,7 +99,7 @@ app.post("/api/study", async (req, res) => {
     Also provide a summary, detailed markdown explanation, and a 3-question quiz.`;
 
     const result = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: "gemini-2.0-flash",
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
         systemInstruction,
@@ -108,9 +108,10 @@ app.post("/api/study", async (req, res) => {
       },
     });
 
-    const response = JSON.parse(result.text || "{}");
+    const responseText = result.response.text();
+    const responseData = JSON.parse(responseText);
     
-    res.json(response);
+    res.json(responseData);
   } catch (error: any) {
     console.error("Gemini API error:", error);
     res.status(500).json({ error: error.message });

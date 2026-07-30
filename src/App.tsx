@@ -676,7 +676,7 @@ const QuizCard = ({ quiz, index, special }: { quiz: any, index: number, special?
 };
 
 const LeftPanel = () => {
-  const { currentPrompt, setPrompt, isLoading, setLoading, studyData, setStudyData, subject, depth, user } = useStore();
+  const { currentPrompt, setPrompt, isLoading, setLoading, studyData, setStudyData, subject, depth, user, history, setHistory } = useStore();
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const special = SPECIAL_SUBJECTS[subject];
