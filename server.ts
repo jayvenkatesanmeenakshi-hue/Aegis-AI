@@ -33,14 +33,8 @@ const ai = new GoogleGenAI({
 const studySchema = {
   type: Type.OBJECT,
   properties: {
-    summary: {
-      type: Type.STRING,
-      description: "Short concept overview",
-    },
-    explanation: {
-      type: Type.STRING,
-      description: "Detailed markdown breakdown with bullet points",
-    },
+    summary: { type: Type.STRING },
+    explanation: { type: Type.STRING },
     nodes: {
       type: Type.ARRAY,
       items: {
@@ -71,11 +65,8 @@ const studySchema = {
         type: Type.OBJECT,
         properties: {
           question: { type: Type.STRING },
-          options: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-          },
-          correctAnswer: { type: Type.NUMBER, description: "Index of the correct answer" },
+          options: { type: Type.ARRAY, items: { type: Type.STRING } },
+          correctAnswer: { type: Type.NUMBER },
           feedback: { type: Type.STRING },
         },
         required: ["question", "options", "correctAnswer", "feedback"],
@@ -90,6 +81,7 @@ app.post("/api/study", async (req, res) => {
     const { prompt, depth, subject } = req.body;
     
     if (!process.env.GEMINI_API_KEY) {
+      console.error("Missing GEMINI_API_KEY");
       return res.status(500).json({ error: "Gemini API key not configured" });
     }
 
@@ -98,8 +90,8 @@ app.post("/api/study", async (req, res) => {
     Provide a graph structure (nodes and edges) representing the logical breakdown of the concept.
     Also provide a summary, detailed markdown explanation, and a 3-question quiz.`;
 
-    const result = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+    const response = await ai.models.generateContent({
+      model: "gemini-3.6-flash",
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
         systemInstruction,
@@ -108,14 +100,19 @@ app.post("/api/study", async (req, res) => {
       },
     });
 
-    const responseText = result.response.text();
-    const responseData = JSON.parse(responseText);
+    const responseText = response.text;
+    const responseData = JSON.parse(responseText || "{}");
     
     res.json(responseData);
   } catch (error: any) {
     console.error("Gemini API error:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message || "An error occurred during generation" });
   }
+});
+
+// Catch-all for API routes to return JSON 404
+app.all("/api/*", (req, res) => {
+  res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
 });
 
 async function startServer() {
