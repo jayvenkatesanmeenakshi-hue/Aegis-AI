@@ -11,6 +11,16 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// Logger middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "",
   httpOptions: {
@@ -108,12 +118,18 @@ app.post("/api/study", async (req, res) => {
 });
 
 async function startServer() {
+  // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
+    try {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+      console.log("Vite middleware loaded");
+    } catch (e) {
+      console.error("Failed to load Vite middleware:", e);
+    }
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
@@ -123,7 +139,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
   });
 }
 
