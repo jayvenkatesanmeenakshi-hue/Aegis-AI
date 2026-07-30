@@ -260,12 +260,15 @@ const OnboardingFlow = () => {
     if (!user) return;
     setIsSaving(true);
     try {
-      await updateDoc(doc(db, 'users', user.uid), data);
+      // Use setDoc with merge: true instead of updateDoc to handle non-existent docs
+      // Also, we wrap in a try-catch to allow local progress if Firestore is unconfigured or blocked
+      await setDoc(doc(db, 'users', user.uid), data, { merge: true });
+    } catch (err) {
+      console.warn("Failed to sync progress to cloud, saving locally:", err);
+      // We still update local state below
+    } finally {
       setUser({ ...user, ...data });
       if (next) setStep(step + 1);
-    } catch (err) {
-      console.error("Failed to save progress:", err);
-    } finally {
       setIsSaving(false);
     }
   };

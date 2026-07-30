@@ -1,6 +1,8 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { Node, Edge } from '@xyflow/react';
 
+// ... (interfaces stay same)
 interface QuizQuestion {
   question: string;
   options: string[];
@@ -52,36 +54,47 @@ interface AppState {
   setGlobalError: (error: string | null) => void;
 }
 
-export const useStore = create<AppState>((set) => ({
-  user: {
-    uid: 'guest-' + (typeof window !== 'undefined' ? (localStorage.getItem('guest_id') || (() => {
-      const id = Math.random().toString(36).substring(7);
-      localStorage.setItem('guest_id', id);
-      return id;
-    })()) : 'server'),
-    email: 'guest@aegis.ai',
-    displayName: 'Guest Student',
-    photoURL: null,
-    onboarded: false
-  },
-  view: 'landing',
-  currentPrompt: '',
-  subject: 'Physics',
-  depth: 'Student',
-  isLoading: false,
-  studyData: null,
-  selectedNodeId: null,
-  history: [],
-  globalError: null,
+export const useStore = create<AppState>()(
+  persist(
+    (set) => ({
+      user: {
+        uid: 'guest-' + (typeof window !== 'undefined' ? (localStorage.getItem('guest_id') || (() => {
+          const id = Math.random().toString(36).substring(7);
+          localStorage.setItem('guest_id', id);
+          return id;
+        })()) : 'server'),
+        email: 'guest@aegis.ai',
+        displayName: 'Guest Student',
+        photoURL: null,
+        onboarded: false
+      },
+      view: 'landing',
+      currentPrompt: '',
+      subject: 'Physics',
+      depth: 'Student',
+      isLoading: false,
+      studyData: null,
+      selectedNodeId: null,
+      history: [],
+      globalError: null,
 
-  setUser: (user) => set({ user }),
-  setView: (view) => set({ view }),
-  setPrompt: (currentPrompt) => set({ currentPrompt }),
-  setSubject: (subject) => set({ subject }),
-  setDepth: (depth) => set({ depth }),
-  setStudyData: (studyData) => set({ studyData }),
-  setLoading: (isLoading) => set({ isLoading }),
-  setSelectedNodeId: (selectedNodeId) => set({ selectedNodeId }),
-  setHistory: (history) => set({ history }),
-  setGlobalError: (globalError) => set({ globalError }),
-}));
+      setUser: (user) => set({ user }),
+      setView: (view) => set({ view }),
+      setPrompt: (currentPrompt) => set({ currentPrompt }),
+      setSubject: (subject) => set({ subject }),
+      setDepth: (depth) => set({ depth }),
+      setStudyData: (studyData) => set({ studyData }),
+      setLoading: (isLoading) => set({ isLoading }),
+      setSelectedNodeId: (selectedNodeId) => set({ selectedNodeId }),
+      setHistory: (history) => set({ history }),
+      setGlobalError: (globalError) => set({ globalError }),
+    }),
+    {
+      name: 'aegis-ai-storage',
+      partialize: (state) => ({ 
+        user: state.user,
+        view: state.view === 'landing' ? 'landing' : state.view // Keep landing if refresh on landing
+      }),
+    }
+  )
+);
