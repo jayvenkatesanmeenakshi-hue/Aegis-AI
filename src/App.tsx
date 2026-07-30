@@ -268,7 +268,12 @@ const OnboardingFlow = () => {
   }, [user]);
 
   const saveProgress = async (data: any, next: boolean = true) => {
-    if (!user) return;
+    if (!user) {
+      console.error("No user found in saveProgress");
+      return;
+    }
+    
+    console.log("Saving progress:", data, "Next step:", next);
     
     // Optimistic local update
     const updatedUser = { ...user, ...data };
@@ -279,11 +284,17 @@ const OnboardingFlow = () => {
     if (data.grade) setGrade(data.grade);
     if (data.subjects) setSubjects(data.subjects);
     
-    if (next) setStep((prev) => prev + 1);
+    if (next) {
+      setStep((prev) => {
+        console.log("Moving from step", prev, "to", prev + 1);
+        return prev + 1;
+      });
+    }
 
     setIsSaving(true);
     try {
       await setDoc(doc(db, 'users', user.uid), data, { merge: true });
+      console.log("Firestore sync successful");
     } catch (err) {
       console.warn("Failed to sync progress to cloud, saving locally:", err);
     } finally {
@@ -325,6 +336,15 @@ const OnboardingFlow = () => {
         className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 border border-teal-100"
       >
         <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${isSaving ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`}></div>
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">
+                {isSaving ? 'Syncing...' : 'Connected'}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Step {step} of 4</p>
+          </div>
           <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
             <motion.div 
               className="h-full bg-teal-500"
@@ -332,43 +352,69 @@ const OnboardingFlow = () => {
               animate={{ width: `${(step / 4) * 100}%` }}
             />
           </div>
-          <p className="text-right text-[10px] text-slate-400 mt-2 uppercase font-bold tracking-widest">Step {step} of 4</p>
         </div>
+
+        {step > 1 && (
+          <button 
+            onClick={() => setStep(step - 1)}
+            className="mb-6 text-xs text-slate-400 hover:text-teal-600 font-semibold flex items-center gap-1 transition-colors"
+          >
+            <ArrowRight size={14} className="rotate-180" /> Back to Step {step - 1}
+          </button>
+        )}
 
         {step === 1 && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-slate-900">Which school do you attend?</h2>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-slate-900">Which school do you attend?</h2>
+              <p className="text-sm text-slate-500">Select your institution to customize your study paths.</p>
+            </div>
             <div className="grid grid-cols-1 gap-3">
               <button 
-                onClick={() => saveProgress({ school: '21kschool' })}
-                className={`p-4 border rounded-xl text-left font-medium transition-all ${school === '21kschool' ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-teal-100 text-slate-700 hover:bg-teal-50'}`}
+                onClick={() => {
+                  console.log("Selected 21kschool");
+                  saveProgress({ school: '21kschool' });
+                }}
+                className={`p-4 border rounded-2xl text-left font-semibold transition-all group ${school === '21kschool' ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm shadow-teal-100' : 'border-slate-100 text-slate-600 hover:border-teal-200 hover:bg-teal-50/30'}`}
               >
-                21kschool
+                <div className="flex items-center justify-between">
+                  <span>21kschool</span>
+                  {school === '21kschool' && <CheckCircle size={18} className="text-teal-500" />}
+                </div>
               </button>
               <button 
                 onClick={() => setSchool('Other')}
-                className={`p-4 border rounded-xl text-left font-medium transition-all ${school === 'Other' || (school && school !== '21kschool') ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-teal-100 text-slate-700 hover:bg-teal-50'}`}
+                className={`p-4 border rounded-2xl text-left font-semibold transition-all ${school === 'Other' || (school && school !== '21kschool') ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm shadow-teal-100' : 'border-slate-100 text-slate-600 hover:border-teal-200 hover:bg-teal-50/30'}`}
               >
-                Other
+                <div className="flex items-center justify-between">
+                  <span>Other Institution</span>
+                  {(school === 'Other' || (school && school !== '21kschool')) && <CheckCircle size={18} className="text-teal-500" />}
+                </div>
               </button>
             </div>
-            {school === 'Other' && (
-              <div className="space-y-4">
+            
+            {(school === 'Other' || (school && school !== '21kschool')) && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4 pt-2"
+              >
                 <input 
                   autoFocus
                   placeholder="Enter school name"
                   value={otherSchool}
                   onChange={(e) => setOtherSchool(e.target.value)}
-                  className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none"
+                  className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none transition-all text-sm font-medium"
                 />
                 <button 
                   disabled={!otherSchool.trim() || isSaving}
                   onClick={() => saveProgress({ school: otherSchool })}
-                  className="w-full bg-teal-500 text-white py-3 rounded-xl font-bold disabled:opacity-50"
+                  className="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isSaving ? "Saving..." : "Continue"}
+                  {!isSaving && <ArrowRight size={18} />}
                 </button>
-              </div>
+              </motion.div>
             )}
           </div>
         )}
