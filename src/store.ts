@@ -38,6 +38,7 @@ interface AppState {
   studyData: StudyData | null;
   selectedNodeId: string | null;
   history: any[];
+  globalError: string | null;
   
   setUser: (user: UserProfile | null) => void;
   setView: (view: 'landing' | 'onboarding' | 'app') => void;
@@ -48,6 +49,7 @@ interface AppState {
   setLoading: (loading: boolean) => void;
   setSelectedNodeId: (id: string | null) => void;
   setHistory: (history: any[]) => void;
+  setGlobalError: (error: string | null) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -60,6 +62,7 @@ export const useStore = create<AppState>((set) => ({
   studyData: null,
   selectedNodeId: null,
   history: [],
+  globalError: null,
 
   setUser: (user) => set({ user }),
   setView: (view) => set({ view }),
@@ -70,4 +73,5 @@ export const useStore = create<AppState>((set) => ({
   setLoading: (isLoading) => set({ isLoading }),
   setSelectedNodeId: (selectedNodeId) => set({ selectedNodeId }),
   setHistory: (history) => set({ history }),
+  setGlobalError: (globalError) => set({ globalError }),
 }));
