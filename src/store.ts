@@ -32,7 +32,7 @@ interface UserProfile {
 
 interface AppState {
   user: UserProfile | null;
-  view: 'landing' | 'onboarding' | 'app';
+  view: 'landing' | 'onboarding' | 'dashboard' | 'app';
   currentPrompt: string;
   subject: string;
   depth: 'ELI5' | 'Student' | 'Deep Dive';
@@ -43,9 +43,10 @@ interface AppState {
   globalError: string | null;
   
   setUser: (user: UserProfile | null) => void;
-  setView: (view: 'landing' | 'onboarding' | 'app') => void;
+  setView: (view: 'landing' | 'onboarding' | 'dashboard' | 'app') => void;
   setPrompt: (prompt: string) => void;
   setSubject: (subject: string) => void;
+  addSubject: (subject: string) => void;
   setDepth: (depth: 'ELI5' | 'Student' | 'Deep Dive') => void;
   setStudyData: (data: StudyData | null) => void;
   setLoading: (loading: boolean) => void;
@@ -70,7 +71,7 @@ export const useStore = create<AppState>()(
       },
       view: 'landing',
       currentPrompt: '',
-      subject: 'Physics',
+      subject: '',
       depth: 'Student',
       isLoading: false,
       studyData: null,
@@ -82,6 +83,12 @@ export const useStore = create<AppState>()(
       setView: (view) => set({ view }),
       setPrompt: (currentPrompt) => set({ currentPrompt }),
       setSubject: (subject) => set({ subject }),
+      addSubject: (subject) => set((state) => ({
+        user: state.user ? {
+          ...state.user,
+          subjects: [...(state.user.subjects || []), subject]
+        } : null
+      })),
       setDepth: (depth) => set({ depth }),
       setStudyData: (studyData) => set({ studyData }),
       setLoading: (isLoading) => set({ isLoading }),
