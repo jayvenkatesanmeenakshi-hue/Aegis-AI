@@ -310,8 +310,12 @@ const OnboardingFlow = () => {
   const finish = () => {
     setUser({
       uid: 'guest-' + Math.random().toString(36).substring(7),
-      ...data,
-      onboarded: true
+      email: 'explorer@example.com',
+      displayName: data.name,
+      photoURL: null,
+      onboarded: true,
+      school: data.school,
+      subjects: data.subjects
     });
     setView('dashboard');
   };
@@ -714,11 +718,32 @@ const LeftPanel = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: input, subject: subject || 'General', depth })
       });
-      const data = await res.json();
       
-      if (data.error) {
-        throw new Error(data.error);
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`API Error (${res.status}):`, {
+          status: res.status,
+          statusText: res.ok,
+          headers: Object.fromEntries(res.headers.entries()),
+          body: errorText.substring(0, 500)
+        });
+        let errorMsg = `Server error: ${res.status}`;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMsg = errorJson.error || errorMsg;
+        } catch (e) {
+          // Not JSON - could be HTML error page
+          if (errorText.includes("<title>")) {
+            const titleMatch = errorText.match(/<title>(.*?)<\/title>/);
+            if (titleMatch) errorMsg = `Server Error: ${titleMatch[1]}`;
+          } else if (errorText.length > 0) {
+            errorMsg = `Server returned non-JSON: ${errorText.substring(0, 50).trim()}...`;
+          }
+        }
+        throw new Error(errorMsg);
       }
+
+      const data = await res.json();
 
       setStudyData(data);
 
@@ -1062,7 +1087,7 @@ const Dashboard = () => {
           <header className="mb-12 flex items-center justify-between">
             <div>
               <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">Study Lab</h1>
-              <p className="text-slate-500 font-medium">Welcome back, {user?.name || 'Explorer'}. Choose a subject to continue.</p>
+              <p className="text-slate-500 font-medium">Welcome back, {user?.displayName || 'Explorer'}. Choose a subject to continue.</p>
             </div>
             <button 
               onClick={() => setIsAddingSubject(true)}

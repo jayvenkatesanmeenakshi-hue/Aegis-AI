@@ -12,12 +12,16 @@ app.use(express.json());
 
 // Logger middleware
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`${req.method} ${req.url} ${res.statusCode} ${duration}ms`);
+  });
   next();
 });
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 const studySchema = {
@@ -86,7 +90,7 @@ app.post("/api/study", async (req, res) => {
 
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: {
         systemInstruction,
         responseMimeType: "application/json",
@@ -94,13 +98,41 @@ app.post("/api/study", async (req, res) => {
       },
     });
 
-    const responseText = response.text;
-    const responseData = JSON.parse(responseText || "{}");
-    
-    res.json(responseData);
+    if (!response.text) {
+      throw new Error("Empty response from Gemini API");
+    }
+
+    let text = response.text.trim();
+    // Sometimes the model still wraps in markdown blocks even with responseMimeType
+    if (text.startsWith("```")) {
+      text = text.replace(/^```json\s*|```\s*$/g, "");
+    }
+
+    try {
+      const responseData = JSON.parse(text);
+      res.json(responseData);
+    } catch (parseError) {
+      console.error("Failed to parse Gemini response:", text);
+      res.status(500).json({ 
+        error: "Failed to parse study data",
+        details: text.substring(0, 200)
+      });
+    }
   } catch (error: any) {
     console.error("Gemini API error:", error);
-    res.status(500).json({ error: error.message || "An error occurred during generation" });
+    let message = error.message || "An error occurred during generation";
+    
+    // Attempt to parse nested JSON error if present (common with SDK errors)
+    try {
+      const parsed = JSON.parse(message);
+      if (parsed.error && parsed.error.message) {
+        message = parsed.error.message;
+      }
+    } catch (e) {
+      // Not JSON, use raw message
+    }
+
+    res.status(500).json({ error: message });
   }
 });
 
