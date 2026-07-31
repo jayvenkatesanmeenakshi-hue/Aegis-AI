@@ -74,7 +74,7 @@ export default async function handler(req: any, res: any) {
       }
     });
 
-    const modelName = "gemini-1.5-flash"; // Using a more stable model
+    const modelName = "gemini-3.6-flash";
     console.log(`Using model: ${modelName} for study data generation`);
 
     const systemInstruction = `You are Aegis AI, a STEM and Literature study co-pilot. 
@@ -94,13 +94,20 @@ export default async function handler(req: any, res: any) {
           },
         });
       } catch (error: any) {
-        // Retry on 503 (Service Unavailable) or 429 (Too Many Requests)
-        const isRetryable = error.status === 503 || error.status === 429 || error.message?.includes("503") || error.message?.includes("high demand");
+        // Retry on 503 (Service Unavailable), 429 (Too Many Requests), or high demand messages
+        const isRetryable = error.status === 503 || error.status === 429 || 
+                          error.message?.includes("503") || 
+                          error.message?.includes("high demand") ||
+                          error.message?.includes("Service Unavailable");
         
         if (retries > 0 && isRetryable) {
-          console.warn(`Gemini API busy (Status: ${error.status}). Retrying in ${delay}ms... (${retries} attempts remaining)`);
+          console.warn(`Gemini API busy or unavailable (Status: ${error.status || 'N/A'}). Retrying in ${delay}ms... (${retries} attempts remaining)`);
           await new Promise(resolve => setTimeout(resolve, delay));
           return generateWithRetry(retries - 1, delay * 2);
+        }
+        
+        if (isRetryable) {
+          console.error(`Gemini model ${modelName} remains overloaded after retries.`);
         }
         throw error;
       }
