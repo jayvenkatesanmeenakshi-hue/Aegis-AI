@@ -488,6 +488,10 @@ const TopBar = () => {
               <button
                 key={s}
                 onClick={() => {
+                  if (subject !== s) {
+                    setStudyData(null);
+                    setPrompt('');
+                  }
                   setSubject(s);
                   if (view !== 'app') setView('app');
                 }}
