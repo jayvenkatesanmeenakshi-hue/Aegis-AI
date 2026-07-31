@@ -53,6 +53,11 @@ export async function generateStudyData(prompt: string, subject: string, depth: 
 
   const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      }
+    }
   });
 
   const systemInstruction = `You are Aegis AI, a STEM and Literature study co-pilot. 
@@ -61,7 +66,7 @@ export async function generateStudyData(prompt: string, subject: string, depth: 
   Also provide a summary, detailed markdown explanation, and a 3-question quiz.`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-3.6-flash",
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     config: {
       systemInstruction,
