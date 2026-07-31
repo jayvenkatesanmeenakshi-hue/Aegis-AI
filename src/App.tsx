@@ -445,162 +445,64 @@ const OnboardingFlow = () => {
   );
 };
 
-const Sidebar = () => {
-  const { history, setHistory, setStudyData, setPrompt, setSubject, user, setView, view } = useStore();
-  const [isOpen, setIsOpen] = useState(true);
 
-  const loadSession = (session: any) => {
-    setStudyData({
-      summary: session.summary,
-      explanation: session.explanation,
-      nodes: session.nodes,
-      edges: session.edges,
-      quiz: session.quiz
-    });
-    setPrompt(session.lastPrompt);
-    setSubject(session.subject);
-    setView('app');
-  };
-
-  return (
-    <motion.div 
-      initial={false}
-      animate={{ width: isOpen ? 280 : 80 }}
-      className="h-screen bg-white/80 backdrop-blur-xl border-r border-slate-200 flex flex-col relative overflow-hidden z-50 shadow-2xl shadow-slate-200/50"
-    >
-      <div className="p-6 flex items-center justify-between border-b border-slate-100">
-        <AnimatePresence mode="wait">
-          {isOpen ? (
-            <motion.div 
-              key="logo"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              className="font-black text-indigo-600 flex items-center gap-3 text-lg tracking-tight"
-            >
-              <div className="p-1.5 bg-indigo-600 text-white rounded-lg shadow-md">
-                <Zap size={18} className="fill-current"/>
-              </div>
-              <span>Aegis AI</span>
-            </motion.div>
-          ) : (
-            <motion.div 
-              key="logo-collapsed"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="p-1.5 bg-indigo-600 text-white rounded-lg shadow-md mx-auto"
-            >
-              <Zap size={20} className="fill-current"/>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        {isOpen && (
-          <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors">
-            <Menu size={20} />
-          </button>
-        )}
-      </div>
-
-      {!isOpen && (
-        <button 
-          onClick={() => setIsOpen(true)}
-          className="mx-auto mt-4 p-2 hover:bg-indigo-50 rounded-xl text-indigo-400 transition-colors"
-        >
-          <Menu size={20} />
-        </button>
-      )}
-
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
-        <div className="space-y-1">
-          <button 
-            onClick={() => setView('dashboard')}
-            className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all group ${view === 'dashboard' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20' : isOpen ? 'hover:bg-indigo-50 text-slate-600 hover:text-indigo-600' : 'justify-center text-slate-400 hover:text-indigo-400 hover:bg-indigo-50'}`}
-          >
-            <Network size={isOpen ? 18 : 22} className={view === 'dashboard' ? 'text-white' : isOpen ? "text-indigo-400" : ""} />
-            {isOpen && <span className="text-sm font-bold">Dashboard</span>}
-          </button>
-          <button 
-            onClick={() => setView('landing')}
-            className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all group ${view === 'landing' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20' : isOpen ? 'hover:bg-indigo-50 text-slate-600 hover:text-indigo-600' : 'justify-center text-slate-400 hover:text-indigo-400 hover:bg-indigo-50'}`}
-          >
-            <BookOpen size={isOpen ? 18 : 22} className={view === 'landing' ? 'text-white' : isOpen ? "text-indigo-400" : ""} />
-            {isOpen && <span className="text-sm font-bold">Lander & Info</span>}
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          {isOpen && <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-3">Recent Sessions</h3>}
-          <div className="space-y-1">
-            {history.map((session) => (
-              <button 
-                key={session.id} 
-                onClick={() => loadSession(session)}
-                className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all group ${isOpen ? 'hover:bg-indigo-50 text-slate-600 hover:text-indigo-600' : 'justify-center text-slate-400 hover:text-indigo-400 hover:bg-indigo-50'}`}
-              >
-                <History size={isOpen ? 16 : 22} className={isOpen ? "text-indigo-300 group-hover:text-indigo-500" : ""} />
-                {isOpen && <span className="text-sm font-semibold truncate flex-1">{session.title}</span>}
-              </button>
-            ))}
-            {isOpen && history.length === 0 && (
-              <div className="px-3 py-4 text-center border-2 border-dashed border-slate-100 rounded-2xl">
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">No history yet</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="p-6 border-t border-slate-100">
-        <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center text-white text-[10px] font-bold shadow-lg">
-            {user?.school?.charAt(0) || 'U'}
-          </div>
-          {isOpen && (
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-black text-slate-900 truncate">Student Lab</p>
-              <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-tight truncate">{user?.school || 'Guest'}</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  );
-};
 
 
 const TopBar = () => {
-  const { subject, setSubject, depth, setDepth, user } = useStore();
+  const { subject, setSubject, depth, setDepth, user, setView, view, history, setStudyData, setPrompt } = useStore();
   const userSubjects = user?.subjects || ['General'];
   const depths = ['ELI5', 'Student', 'Deep Dive'];
 
   return (
-    <header className="h-20 border-b border-slate-100 bg-white/40 backdrop-blur-xl flex items-center justify-between px-8 sticky top-0 z-40">
-      <div className="flex items-center gap-4 overflow-x-auto no-scrollbar max-w-[70%] py-2">
-        <div className="flex items-center gap-3">
-          {userSubjects.map((s) => {
+    <header className="h-20 border-b border-slate-100 bg-white/40 backdrop-blur-xl flex items-center justify-between px-8 sticky top-0 z-50">
+      <div className="flex items-center gap-8">
+        <button 
+          onClick={() => setView('dashboard')}
+          className="flex items-center gap-3 font-black text-indigo-600 text-lg tracking-tight hover:scale-105 transition-transform"
+        >
+          <div className="p-1.5 bg-indigo-600 text-white rounded-lg shadow-md">
+            <Zap size={18} className="fill-current"/>
+          </div>
+          <span className="hidden sm:block">Aegis AI</span>
+        </button>
+
+        <div className="h-8 w-px bg-slate-200 hidden md:block"></div>
+
+        <nav className="hidden lg:flex items-center gap-2">
+          <button 
+            onClick={() => setView('dashboard')}
+            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${view === 'dashboard' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            Dashboard
+          </button>
+        </nav>
+      </div>
+
+      <div className="flex items-center gap-6">
+        <div className="hidden xl:flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+          {userSubjects.slice(0, 3).map((s) => {
             const special = SPECIAL_SUBJECTS[s];
             const isActive = subject === s;
             
             return (
               <button
                 key={s}
-                onClick={() => setSubject(s)}
-                className={`px-5 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border ${
+                onClick={() => {
+                  setSubject(s);
+                  if (view !== 'app') setView('app');
+                }}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
                   isActive 
-                    ? (special ? `${special.color} text-white border-transparent shadow-xl shadow-${special.accent}-500/20` : 'bg-indigo-600 text-white border-transparent shadow-xl shadow-indigo-500/20')
-                    : (special ? `bg-white text-slate-500 border-slate-100 hover:${special.light} hover:${special.text}` : 'bg-white text-slate-500 border-slate-100 hover:bg-indigo-50 hover:text-indigo-600')
+                    ? (special ? `${special.color} text-white shadow-lg` : 'bg-indigo-600 text-white shadow-lg')
+                    : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
-                {special?.icon && <span className={isActive ? 'text-white' : special.text}>{special.icon}</span>}
                 {s}
               </button>
             );
           })}
         </div>
-      </div>
 
-      <div className="flex items-center gap-6">
         <div className="hidden md:flex bg-slate-100/50 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
           {depths.map((d) => (
             <button
@@ -616,13 +518,17 @@ const TopBar = () => {
             </button>
           ))}
         </div>
-        <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 cursor-help group relative">
+
+        <button 
+          onClick={() => setView('dashboard')}
+          className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 hover:bg-indigo-100 transition-colors group relative"
+        >
           <UserCheck size={20} />
           <div className="absolute top-full right-0 mt-3 w-48 p-3 bg-white border border-slate-100 rounded-2xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-            <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-1">Student Profile</p>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed">Tailoring Aegis AI for your {depth} level exploration.</p>
+            <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-1">{user?.displayName || 'Student'}</p>
+            <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-tight">{user?.school || 'University'}</p>
           </div>
-        </div>
+        </button>
       </div>
     </header>
   );
@@ -1006,7 +912,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen w-full bg-[#F8FAFC] text-slate-900 overflow-hidden font-sans relative selection:bg-indigo-100">
+    <div className="flex flex-col h-screen w-full bg-[#F8FAFC] text-slate-900 overflow-hidden font-sans relative selection:bg-indigo-100">
       {/* Dynamic Background */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <motion.div 
@@ -1030,7 +936,6 @@ export default function App() {
         <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]"></div>
       </div>
       
-      <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden relative z-10">
         <TopBar />
         <main className="flex flex-1 overflow-hidden">
@@ -1058,16 +963,16 @@ const Dashboard = () => {
     return history.filter(h => h.subject === s);
   };
 
-  const handleOpenTopic = (session: any) => {
+  const handleOpenTopic = (topic: any) => {
     setStudyData({
-      summary: session.summary,
-      explanation: session.explanation,
-      nodes: session.nodes,
-      edges: session.edges,
-      quiz: session.quiz
+      summary: topic.summary,
+      explanation: topic.explanation,
+      nodes: topic.nodes,
+      edges: topic.edges,
+      quiz: topic.quiz
     });
-    setPrompt(session.lastPrompt);
-    setSubject(session.subject);
+    setPrompt(topic.lastPrompt);
+    setSubject(topic.subject);
     setView('app');
   };
 
@@ -1080,8 +985,8 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex h-screen w-full bg-[#F8FAFC] text-slate-900 overflow-hidden font-sans relative selection:bg-indigo-100">
-      <Sidebar />
+    <div className="flex flex-col h-screen w-full bg-[#F8FAFC] text-slate-900 overflow-hidden font-sans relative selection:bg-indigo-100">
+      <TopBar />
       <div className="flex-1 overflow-y-auto relative z-10 custom-scrollbar">
         <div className="max-w-6xl mx-auto px-8 py-12">
           <header className="mb-12 flex items-center justify-between">

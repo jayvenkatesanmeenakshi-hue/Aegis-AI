@@ -100,7 +100,7 @@ export const useStore = create<AppState>()(
       name: 'aegis-ai-storage',
       partialize: (state) => ({ 
         user: state.user,
-        view: state.view === 'landing' ? 'landing' : state.view,
+        view: (state.view === 'app' || state.view === 'onboarding') ? 'dashboard' : state.view,
         history: state.history,
         studyData: state.studyData
       }),
