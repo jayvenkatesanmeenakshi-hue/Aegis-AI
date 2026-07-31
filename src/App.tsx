@@ -37,7 +37,8 @@ import {
   X,
   Info,
   Folder,
-  Plus
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
@@ -921,6 +922,10 @@ export default function App() {
     return <Dashboard />;
   }
 
+  if (view === 'folder') {
+    return <SubjectView />;
+  }
+
   return (
     <div className="flex flex-col h-screen w-full bg-[#F8FAFC] text-slate-900 overflow-hidden font-sans relative selection:bg-indigo-100">
       {/* Dynamic Background */}
@@ -962,8 +967,7 @@ export default function App() {
 }
 
 const Dashboard = () => {
-  const { user, setView, setSubject, addSubject, history, setStudyData, setPrompt } = useStore();
-  const [activeFolder, setActiveFolder] = useState<string | null>(null);
+  const { user, setView, setSubject, addSubject, removeSubject, history } = useStore();
   const [isAddingSubject, setIsAddingSubject] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
 
@@ -971,19 +975,6 @@ const Dashboard = () => {
   
   const getTopicsForSubject = (s: string) => {
     return history.filter(h => h.subject === s);
-  };
-
-  const handleOpenTopic = (topic: any) => {
-    setStudyData({
-      summary: topic.summary,
-      explanation: topic.explanation,
-      nodes: topic.nodes,
-      edges: topic.edges,
-      quiz: topic.quiz
-    });
-    setPrompt(topic.lastPrompt);
-    setSubject(topic.subject);
-    setView('app');
   };
 
   const handleAddSubject = () => {
@@ -1001,15 +992,15 @@ const Dashboard = () => {
         <div className="max-w-6xl mx-auto px-8 py-12">
           <header className="mb-12 flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">Study Lab</h1>
-              <p className="text-slate-500 font-medium">Welcome back, {user?.displayName || 'Explorer'}. Choose a subject to continue.</p>
+              <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">My Library</h1>
+              <p className="text-slate-500 font-medium text-sm">Welcome back, {user?.displayName || 'Explorer'}. Manage your study folders here.</p>
             </div>
             <button 
               onClick={() => setIsAddingSubject(true)}
-              className="px-6 py-3 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20 flex items-center gap-2"
+              className="px-6 py-3 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20 flex items-center gap-2 text-sm uppercase tracking-widest"
             >
-              <BookOpen size={18} />
-              Add Subject
+              <Plus size={18} />
+              New Folder
             </button>
           </header>
 
@@ -1017,83 +1008,53 @@ const Dashboard = () => {
             {subjects.map(s => {
               const special = SPECIAL_SUBJECTS[s];
               const topics = getTopicsForSubject(s);
-              const isOpen = activeFolder === s;
 
               return (
-                <div key={s} className="contents">
-                  <motion.div 
-                    layout
-                    onClick={() => setActiveFolder(isOpen ? null : s)}
-                    className={`p-6 rounded-[2.5rem] border-2 cursor-pointer transition-all group relative overflow-hidden h-fit ${
-                      isOpen 
-                        ? (special ? `${special.color} border-transparent text-white shadow-2xl shadow-${special.accent}-500/30` : 'bg-indigo-600 border-transparent text-white shadow-2xl')
-                        : 'bg-white border-slate-100 hover:border-indigo-100 hover:shadow-xl'
-                    }`}
+                <motion.div 
+                  key={s}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="group relative"
+                >
+                  <div 
+                    onClick={() => {
+                      setSubject(s);
+                      setView('folder');
+                    }}
+                    className={`p-6 rounded-[2.5rem] border-2 cursor-pointer transition-all bg-white border-slate-100 hover:border-indigo-100 hover:shadow-2xl relative overflow-hidden h-full flex flex-col`}
                   >
                     <div className="flex items-center gap-4 mb-4">
-                      <div className={`p-3 rounded-2xl shadow-inner ${isOpen ? 'bg-white/20' : (special ? special.light : 'bg-slate-50')}`}>
-                        {special?.icon ? React.cloneElement(special.icon, { size: 24, className: isOpen ? 'text-white' : special.text }) : <BookOpen size={24} className="text-slate-400" />}
+                      <div className={`p-3 rounded-2xl ${special ? special.light : 'bg-slate-50'}`}>
+                        {special?.icon ? React.cloneElement(special.icon, { size: 24, className: special.text }) : <Folder size={24} className="text-slate-400" />}
                       </div>
-                      <div>
-                        <h3 className="font-black text-sm uppercase tracking-widest">{s}</h3>
-                        <p className={`text-[10px] font-bold uppercase tracking-tight opacity-60`}>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-black text-sm uppercase tracking-widest truncate">{s}</h3>
+                        <p className={`text-[10px] font-bold uppercase tracking-tight text-slate-400`}>
                           {topics.length} {topics.length === 1 ? 'Topic' : 'Topics'}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest opacity-80 mt-8">
-                      <span>Folder</span>
-                      <ArrowRight size={14} className={`transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`} />
+                    
+                    <div className="mt-auto pt-8 flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Folder</span>
+                      <div className="p-2 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
+                        <ArrowRight size={14} />
+                      </div>
                     </div>
-                  </motion.div>
+                  </div>
 
-                  <AnimatePresence>
-                    {isOpen && (
-                      <motion.div 
-                        initial={{ opacity: 0, scale: 0.95, y: -20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                        className="col-span-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-8 bg-slate-100/50 rounded-[3rem] border-2 border-white mb-8"
-                      >
-                        {topics.map(topic => (
-                          <button
-                            key={topic.id}
-                            onClick={() => handleOpenTopic(topic)}
-                            className="p-5 bg-white border border-slate-100 rounded-[2rem] text-left hover:shadow-xl hover:border-indigo-200 transition-all group flex flex-col gap-4"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className={`p-2 rounded-xl ${special ? special.light : 'bg-slate-50'} text-indigo-400`}>
-                                <Brain size={16} />
-                              </div>
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Topic</span>
-                            </div>
-                            <h4 className="font-black text-slate-800 text-sm leading-tight line-clamp-2">{topic.title}</h4>
-                            <div className="flex items-center justify-between mt-2">
-                              <span className="text-[10px] font-bold text-slate-400">{new Date(topic.createdAt).toLocaleDateString()}</span>
-                              <div className="p-1.5 rounded-lg group-hover:bg-indigo-50 group-hover:text-indigo-600 text-slate-300 transition-colors">
-                                <ArrowRight size={14} />
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                        <button 
-                          onClick={() => {
-                            setSubject(s);
-                            setStudyData(null);
-                            setPrompt('');
-                            setView('app');
-                          }}
-                          className="p-5 bg-white border-2 border-dashed border-slate-200 rounded-[2rem] text-left hover:border-indigo-300 hover:bg-indigo-50/30 transition-all flex flex-col items-center justify-center gap-3 group"
-                        >
-                          <div className="p-2 rounded-full bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-indigo-500 transition-all">
-                            <Sparkles size={20} />
-                          </div>
-                          <span className="text-xs font-black text-slate-400 uppercase tracking-widest group-hover:text-indigo-600">New Topic</span>
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`Are you sure you want to delete "${s}"?`)) {
+                        removeSubject(s);
+                      }
+                    }}
+                    className="absolute top-4 right-4 p-2 rounded-xl bg-rose-50 text-rose-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-100 z-20"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </motion.div>
               );
             })}
           </div>
@@ -1110,16 +1071,16 @@ const Dashboard = () => {
               className="w-full max-w-md bg-white rounded-[3rem] p-10 shadow-2xl space-y-8 relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 p-8 opacity-5">
-                <BookOpen size={120} />
+                <Folder size={120} />
               </div>
               <div className="space-y-2">
-                <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">Add New Subject</h2>
-                <p className="text-slate-500 font-medium text-sm">Create a new folder to organize your topics.</p>
+                <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">New Subject</h2>
+                <p className="text-slate-500 font-medium text-sm">Organize your research in a dedicated folder.</p>
               </div>
               <input 
                 autoFocus
                 className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-indigo-500 focus:ring-8 focus:ring-indigo-500/5 transition-all shadow-inner"
-                placeholder="Subject Name (e.g. World History)"
+                placeholder="Subject Name (e.g. Astrophysics)"
                 value={newSubjectName}
                 onChange={e => setNewSubjectName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAddSubject()}
@@ -1143,6 +1104,108 @@ const Dashboard = () => {
           </div>
         )}
       </AnimatePresence>
+    </div>
+  );
+};
+
+const SubjectView = () => {
+  const { user, subject, setView, setSubject, history, setStudyData, setPrompt } = useStore();
+  const topics = history.filter(h => h.subject === subject);
+  const special = SPECIAL_SUBJECTS[subject];
+
+  const handleOpenTopic = (topic: any) => {
+    setStudyData({
+      summary: topic.summary,
+      explanation: topic.explanation,
+      nodes: topic.nodes,
+      edges: topic.edges,
+      quiz: topic.quiz
+    });
+    setPrompt(topic.lastPrompt);
+    setSubject(topic.subject);
+    setView('app');
+  };
+
+  return (
+    <div className="flex flex-col h-screen w-full bg-[#F8FAFC] text-slate-900 overflow-hidden font-sans relative selection:bg-indigo-100">
+      <TopBar />
+      <div className="flex-1 overflow-y-auto relative z-10 custom-scrollbar">
+        <div className="max-w-6xl mx-auto px-8 py-12">
+          <motion.button 
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            onClick={() => setView('dashboard')}
+            className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 font-black text-[10px] uppercase tracking-widest mb-8 group"
+          >
+            <ArrowRight size={14} className="rotate-180 group-hover:-translate-x-1 transition-transform" />
+            Back to Library
+          </motion.button>
+
+          <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="flex items-center gap-6">
+              <div className={`p-6 rounded-[2rem] shadow-xl ${special ? special.light : 'bg-white border-slate-100 border-2'}`}>
+                {special?.icon ? React.cloneElement(special.icon, { size: 40, className: special.text }) : <Folder size={40} className="text-slate-400" />}
+              </div>
+              <div>
+                <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2 uppercase">{subject}</h1>
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-lg uppercase tracking-widest">
+                    {topics.length} {topics.length === 1 ? 'Saved Topic' : 'Saved Topics'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <button 
+              onClick={() => {
+                setStudyData(null);
+                setPrompt('');
+                setView('app');
+              }}
+              className="px-8 py-4 bg-indigo-600 text-white font-black rounded-[2rem] hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-600/30 flex items-center gap-3 text-sm uppercase tracking-widest"
+            >
+              <Sparkles size={18} />
+              New Investigation
+            </button>
+          </header>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {topics.length > 0 ? (
+              topics.map((topic, i) => (
+                <motion.button
+                  key={topic.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  onClick={() => handleOpenTopic(topic)}
+                  className="p-8 bg-white border border-slate-100 rounded-[2.5rem] text-left hover:shadow-2xl hover:border-indigo-200 transition-all group flex flex-col h-64"
+                >
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className={`p-3 rounded-2xl ${special ? special.light : 'bg-slate-50'} text-indigo-400 group-hover:scale-110 transition-transform`}>
+                      <Brain size={20} />
+                    </div>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Investigation</span>
+                  </div>
+                  <h4 className="font-black text-slate-800 text-lg leading-tight line-clamp-3 flex-1">{topic.title}</h4>
+                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-50 w-full">
+                    <span className="text-[10px] font-bold text-slate-400">{new Date(topic.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <div className="p-2 rounded-xl group-hover:bg-indigo-50 group-hover:text-indigo-600 text-slate-300 transition-all">
+                      <ArrowRight size={16} />
+                    </div>
+                  </div>
+                </motion.button>
+              ))
+            ) : (
+              <div className="col-span-full py-24 text-center">
+                <div className="inline-flex p-8 rounded-[3rem] bg-slate-50 text-slate-300 mb-6">
+                  <BookOpen size={64} />
+                </div>
+                <h3 className="text-xl font-black text-slate-400 uppercase tracking-widest">No topics yet</h3>
+                <p className="text-slate-400 font-medium mt-2">Start your first investigation in {subject}!</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

@@ -32,7 +32,7 @@ interface UserProfile {
 
 interface AppState {
   user: UserProfile | null;
-  view: 'landing' | 'onboarding' | 'dashboard' | 'app';
+  view: 'landing' | 'onboarding' | 'dashboard' | 'app' | 'folder';
   currentPrompt: string;
   subject: string;
   depth: 'ELI5' | 'Student' | 'Deep Dive';
@@ -43,10 +43,11 @@ interface AppState {
   globalError: string | null;
   
   setUser: (user: UserProfile | null) => void;
-  setView: (view: 'landing' | 'onboarding' | 'dashboard' | 'app') => void;
+  setView: (view: 'landing' | 'onboarding' | 'dashboard' | 'app' | 'folder') => void;
   setPrompt: (prompt: string) => void;
   setSubject: (subject: string) => void;
   addSubject: (subject: string) => void;
+  removeSubject: (subject: string) => void;
   setDepth: (depth: 'ELI5' | 'Student' | 'Deep Dive') => void;
   setStudyData: (data: StudyData | null) => void;
   setLoading: (loading: boolean) => void;
@@ -86,7 +87,13 @@ export const useStore = create<AppState>()(
       addSubject: (subject) => set((state) => ({
         user: state.user ? {
           ...state.user,
-          subjects: [...(state.user.subjects || []), subject]
+          subjects: [...new Set([...(state.user.subjects || []), subject])]
+        } : null
+      })),
+      removeSubject: (subject) => set((state) => ({
+        user: state.user ? {
+          ...state.user,
+          subjects: (state.user.subjects || []).filter(s => s !== subject)
         } : null
       })),
       setDepth: (depth) => set({ depth }),
@@ -100,7 +107,7 @@ export const useStore = create<AppState>()(
       name: 'aegis-ai-storage',
       partialize: (state) => ({ 
         user: state.user,
-        view: (state.view === 'app' || state.view === 'onboarding') ? 'dashboard' : state.view,
+        view: (state.view === 'app' || state.view === 'onboarding' || state.view === 'folder') ? 'dashboard' : state.view,
         history: state.history,
         studyData: state.studyData
       }),
