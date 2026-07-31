@@ -113,7 +113,7 @@ const LandingPage = () => {
   
   const handleStart = () => {
     if (user?.onboarded) {
-      setView('app');
+      setView('dashboard');
     } else {
       setView('onboarding');
     }
@@ -897,7 +897,13 @@ const RightPanel = () => {
 };
 
 export default function App() {
-  const { user, view } = useStore();
+  const { user, view, setView } = useStore();
+
+  useEffect(() => {
+    if (view === 'app' || (user?.onboarded && view === 'landing')) {
+      setView('dashboard');
+    }
+  }, []);
 
   if (view === 'landing') {
     return <LandingPage />;
