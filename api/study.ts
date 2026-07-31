@@ -74,20 +74,39 @@ export default async function handler(req: any, res: any) {
       }
     });
 
+    const modelName = "gemini-1.5-flash"; // Using a more stable model
+    console.log(`Using model: ${modelName} for study data generation`);
+
     const systemInstruction = `You are Aegis AI, a STEM and Literature study co-pilot. 
     Explain the concept: "${prompt}" for a ${subject || 'general'} student at a "${depth || 'intermediate'}" depth level.
     Provide a graph structure (nodes and edges) representing the logical breakdown of the concept.
     Also provide a summary, detailed markdown explanation, and a 3-question quiz.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: studySchema as any,
-      },
-    });
+    const generateWithRetry = async (retries = 3, delay = 1000): Promise<any> => {
+      try {
+        return await ai.models.generateContent({
+          model: modelName,
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: studySchema as any,
+          },
+        });
+      } catch (error: any) {
+        // Retry on 503 (Service Unavailable) or 429 (Too Many Requests)
+        const isRetryable = error.status === 503 || error.status === 429 || error.message?.includes("503") || error.message?.includes("high demand");
+        
+        if (retries > 0 && isRetryable) {
+          console.warn(`Gemini API busy (Status: ${error.status}). Retrying in ${delay}ms... (${retries} attempts remaining)`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return generateWithRetry(retries - 1, delay * 2);
+        }
+        throw error;
+      }
+    };
+
+    const response = await generateWithRetry();
 
     if (!response.text) {
       throw new Error("Empty response from Gemini API");
@@ -102,8 +121,17 @@ export default async function handler(req: any, res: any) {
     return res.status(200).json(data);
   } catch (error: any) {
     console.error("API Error:", error);
-    return res.status(500).json({ 
-      error: error.message || "An unexpected error occurred",
+    
+    // Check if it's a service availability issue
+    const isUnavailable = error.message?.includes("high demand") || error.message?.includes("503") || error.status === 503;
+    
+    const friendlyMessage = isUnavailable 
+      ? "Our AI study assistant is currently experiencing high demand. Please wait a moment and try your request again."
+      : (error.message || "An unexpected error occurred while generating your study materials.");
+
+    return res.status(isUnavailable ? 503 : 500).json({ 
+      error: friendlyMessage,
+      code: isUnavailable ? "AI_TEMPORARILY_UNAVAILABLE" : "INTERNAL_SERVER_ERROR",
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
